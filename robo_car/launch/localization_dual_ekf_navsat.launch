@@ -1,0 +1,59 @@
+
+<!--
+     This launch file provides an example of how to work with GPS data using robot_localization. It runs three nodes:
+
+       (1) An EKF instance that fuses odometry and IMU data and outputs an odom-frame state estimate
+
+       (2) A second EKF instance that fuses the same data, but also fuses the transformed GPS data from (3)
+
+       (3) An instance of navsat_transform_node, which takes in GPS data and produces pose data that has been
+           transformed into your robot's world frame (here, map). The node produces a map-frame state estimate.
+
+       The first EKF instance produces the odom->base_link transform. 
+		The second EKF produces the map->odom transform,
+       but requires the odom->base_link transform from the first instance in order to do so. See the
+       params/dual_ekf_navsat_example.yaml file for parameter specification.
+</node>
+<node pkg="tf2_ros" type="static_transform_publisher" name="imu_tf_publisher"
+args="0 0 0 1.57 0 3.14   /base_link /imu_link  10"/>
+    <param name="publish_tf" value="true" />
+    <param name="publish_tf" value="true" />
+    <param name="publish_tf" value="true" />
+-->
+
+<launch>
+
+   
+<!--
+  <node pkg="control" type="talker" name="talker" />
+  <node pkg="control" type="listener" name="listener" />
+-->
+
+ <node pkg="gps" type="gps" name="gps_node" >
+    <param name="publish_tf" value="true" /> 
+ </node>
+
+  <node pkg="mpu6050" type="mpu6050_node" name="mpu6050_node" >
+
+  </node>
+
+
+  <rosparam command="load" file="$(find robo_car)/params/dual_ekf_navsat_parameters.yaml" />
+
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se_odom" clear_params="true">
+  <remap from="odometry/filtered" to="odometry/filtered_odom"/>
+
+  </node>
+
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se_map" clear_params="true">
+    <param name="publish_tf" value="true" />
+   </node>
+
+  <node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform" clear_params="true">
+    <param name="publish_tf" value="true" />
+    <remap from="odometry/filtered" to="odometry/filtered_map"/> 
+    <remap from="gps/fix" to="/gps/gps_data"/>
+    <remap from="/imu/data" to="/imu/data_raw" />
+  </node>
+</launch>
+
